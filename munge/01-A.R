@@ -17,10 +17,6 @@ enrolments = rbind(cyber.security.1_enrolments,cyber.security.2_enrolments,
                    cyber.security.3_enrolments,cyber.security.4_enrolments,
                    cyber.security.5_enrolments,cyber.security.6_enrolments,
                    cyber.security.7_enrolments)
-#Enrolments data de-duplication
-index = duplicated(enrolments$learner_id)
-enrolments2 = enrolments[!index,]
-enrolments2
 
 
 
@@ -79,3 +75,4 @@ weekly_sentiment_survey_responses = rbind(cyber.security.1_weekly.sentiment.surv
                                           cyber.security.5_weekly.sentiment.survey.responses,
                                           cyber.security.6_weekly.sentiment.survey.responses,
                                           cyber.security.7_weekly.sentiment.survey.responses)
+
