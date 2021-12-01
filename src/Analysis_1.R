@@ -17,6 +17,46 @@ g_enr_gender_bar
 
 
 
+#analysis the country
+enr_country = filter(enrolments, country != "Unknown" )
+enr_country
+#Find out what the countries are
+index = duplicated(enr_country$country)
+enr_country_list = enr_country[!index,8]    
+enr_country_list
+#减少数据量加速运算
+enr_country = select(enr_country,country)
+country_num = c()
+for(i in 1:153){
+  #generating single country data frame
+  single_country = filter(enr_country,country == as.character(enr_country_list[i,1]))
+  #compute the number of people that country
+  nums = dim(single_country)[1]
+  #将该步骤的未完成率加入列表
+  country_num = c(country_num ,nums)
+}
+country_num 
+#变成数据框架
+country_num = as.data.frame(country_num)
+#合并
+enr_country_num = cbind(enr_country_list,country_num)
+enr_country_num = filter(enr_country_num, country_num>10)
+enr_country_num = arrange(enr_country_num,desc(country_num))
+
+myLabel = as.vector(enr_country_num$country)   ## 转成向量，否则图例的标签可能与实际顺序不一致
+myLabel = paste(myLabel, "(", round(enr_country_num$country_num / sum(enr_country_num$country_num) * 100, 2), "%) ", sep = "")   ## 用 round() 对结果保留两位小数
+
+ggplot(enr_country_num, aes(x = "", y=country_num, fill = country)) + geom_bar(stat = "identity") +
+          coord_polar(theta = "y") + 
+          labs(x = "", y = "", title = "") + theme(axis.ticks = element_blank()) + 
+          theme(legend.title = element_blank(), legend.position = "top") + 
+          scale_fill_discrete(breaks = enr_country_num$country, labels = myLabel)   ## 将原来的图例标签换成现在的myLabel
+
+
+
+
+
+
 
 
 #analysis the leaving
@@ -111,3 +151,5 @@ ggplot(data = step_activity_step, aes(x = as.factor(step), y = uncomplete_rate, 
 
 
 
+#analysis weekly_sentiment_survey_responses
+weekly_sentiment_survey_responses
