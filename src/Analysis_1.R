@@ -178,13 +178,13 @@ ggplot(data = step_activity_step, aes(x = as.factor(step), y = uncomplete_rate, 
 
 
 
-#分析学习者性别/国籍/年龄和正确率的关系
-#数据清洗
+#Analyse the relationship between learners' gender/nationality/age and correctness
+#Data Cleaning
 enrolments3 = filter(enrolments,role == 'learner'& gender != 'Unknown' &country != 'Unknown' &age_range!='Unknown')
 enrolments3 = select(enrolments3, learner_id, gender, country, age_range)
 enrolments3 = arrange(enrolments3,desc(learner_id))
 enrolments3
-#减少复杂度
+#Reduced complexity
 question_response3 = select(question_response, learner_id,correct)
 question_response3 = arrange(question_response3, desc(learner_id))
 question_response3
@@ -201,13 +201,83 @@ for(i in 1:9176){
   single_id = mutate(single_id, true_rate = learner_true/dim(single_id)[1])
   learner_true_rate = rbind(learner_true_rate,select(single_id,learner_id,true_rate))
 }
-#去重
+#de-weighting
 index = duplicated(learner_true_rate)
 learner_true_rate2 = learner_true_rate[!index,]
 learner_true_rate2
-#合并正确率和性别
+#Combined correct rate and gender
 enrolments3 = left_join(enrolments3,learner_true_rate2,by='learner_id')
-#去除空值
+#Removal of null values
 enrolments3 = na.omit(enrolments3)
 enrolments3
+
+
+
+#Using gender as a differentiating criterion to generate models
+y = as.factor(as.matrix(enrolments3[,2]))
+y = as.numeric(y)-1
+y
+x = enrolments3[,5]
+x = as.matrix(x)
+x[,1] = round(as.numeric(x[,1]),1)
+x
+rebuild_enro = data.frame(y,x)
+view(rebuild_enro)
+#split the data
+train_enro = rebuild_enro[1:1200,]
+test_enro = rebuild_enro[1201:1556,]
+y_train = train_enro[,1]
+y_test = test_enro[,1]
+#fit the model
+lsq_fit = lm(y_train~.,train_enro)
+# compute fitted values for test data
+yhat_test = predict(lsq_fit,test_enro)
+##compute the test error
+test_error_gender = mean((as.numeric(test_enro$y) - yhat_test)^2)
+test_error_gender
+
+
+#Use of age as a criterion for differentiation
+y = as.factor(as.matrix(enrolments3[,4]))
+y = as.numeric(y)-1
+y
+x = enrolments3[,5]
+x = as.matrix(x)
+x[,1] = round(as.numeric(x[,1]),1)
+x
+rebuild_enro = data.frame(y,x)
+view(rebuild_enro)
+#split the data
+train_enro = rebuild_enro[1:1200,]
+test_enro = rebuild_enro[1201:1556,]
+y_train = train_enro[,1]
+y_test = test_enro[,1]
+#fit the model
+lsq_fit = lm(y_train~.,train_enro)
+# compute fitted values for test data
+yhat_test = predict(lsq_fit,test_enro)
+##compute the test error
+test_error_age = mean((as.numeric(test_enro$y) - yhat_test)^2)
+test_error_age*10^30
+
+
+
+
+
+#Relationship between correct rate and gender
+enrolments3
+female_mean = mean(filter(enrolments3, gender == 'female')$true_rate)
+female_mean
+male_mean =  mean(filter(enrolments3, gender == 'male')$true_rate)
+male_mean
+sex = c('male','female')
+correct_rate = c(male_mean,female_mean)
+df = data.frame(sex,correct_rate)
+ggplot(data = df, aes(x = as.factor(sex), y = correct_rate, fill= sex)) + geom_bar(stat='identity',width = 0.5) + 
+  theme(panel.grid.major =element_blank(),  
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.title =  element_text(size=12,face = "bold"),
+        axis.text.x = element_text(size = 12),  
+        plot.margin=unit(rep(3,4),'lines'))     
 
