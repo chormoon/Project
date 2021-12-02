@@ -2,7 +2,9 @@
 title: "CSC8631Report"
 author: "Yang Cong"
 date: "2021/11/23"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -17,22 +19,193 @@ load.project()
 
 
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+# 1. Analyse the gender, age range and country of learners
+### Firstly, we would like to get an overall picture of the gender and age distribution of the learners in order to get a general idea of the profile of our subjects.
+## Analyse the gender
+### When making statistical distinctions by gender, we first eliminate all Unknown values. Using codes:
+```{r analysis the gender, echo=TRUE}
+enr_gender = filter(enrolments, gender == "male" | gender == "female" )
+```
+### And then we can  easily draw the bar charts. From the plot we can see that there are more male learners than female.
+```{r echo=FALSE}
+g_enr_gender = ggplot(data = enr_gender)
+g_enr_gender_bar = g_enr_gender + geom_bar(aes(x = gender, fill = gender ),  width = 0.4) +
+                   theme(panel.grid.major =element_blank(),  # remove the borders
+                   panel.grid.minor = element_blank(),
+                   panel.background = element_blank(),
+                   axis.title =  element_text(size=12,face = "bold"),
+                   axis.text.x =   element_text(hjust = 1, # Adjusting the position of text in horizontal coordinates
+                                                size=15), # Adjusting the font size of text in horizontal coordinates
+                                                plot.margin=unit(rep(3,4),'lines'))     # Set image margins 
+g_enr_gender_bar
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+## Analyse the age range
+### Same as analyse the gender, we should firstly remove the Unknown data.
+```{r analysis the age, echo=FALSE}
+#enrolments
+enr_age = filter(enrolments, age_range != "Unknown")
+#enr_age
+#Find out what the age ranges are
+index = duplicated(enr_age$age_range)
+enr_age_list = enr_age[!index,9]
+```
+### And to reduce the amount of arithmetic, I first simplified the data frame by extracting only the useful data. This operation will be used frequently later in the data analysis and is useful for improving the performance of the analysis.
+```{r echo=TRUE}
+enr_age = select(enr_age, learner_id, age_range)
+```
+### The graph shows that the age distribution of the learners is very wide, but most of the students are already adults. We can therefore assume that they are more mentally mature.
+```{r echo=FALSE}
+age_num = c()
+for(i in 1:7){
+  #generating single country data frame
+  single_age = filter(enr_age,age_range == as.character(enr_age_list[i,1]))
+  #compute the number of people that age
+  nums = dim(single_age)[1]
+  #Add this num to the list
+  age_num = c(age_num ,nums)
+}
+age_num = as.data.frame(age_num)
+enr_age_num = cbind(enr_age_list,age_num)
+#enr_age_num
+ggplot(data=enr_age_num, aes(x=age_range, y=age_num)) + geom_point(color="red") + xlab("Age_range")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Analyse the country
+### It is interesting to analyse the nationality of the learners, we can derive their learning habits from their nationality, which is related to the culture of their country.
+```{r include=FALSE}
+#analysis the country
+enr_country = filter(enrolments, country != "Unknown" )
+#enr_country
+#Find out what the countries are
+index = duplicated(enr_country$country)
+enr_country_list = enr_country[!index,8]    
+#enr_country_list
+#educed data volume and accelerated computing
+enr_country = select(enr_country,country)
+country_num = c()
+for(i in 1:153){
+  #generating single country data frame
+  single_country = filter(enr_country,country == as.character(enr_country_list[i,1]))
+  #compute the number of people that country
+  nums = dim(single_country)[1]
+  #Add the uncomplete rate for this step to the list
+  country_num = c(country_num ,nums)
+}
+country_num 
+#Transformation into a data framework
+country_num = as.data.frame(country_num)
+#combine
+enr_country_num = cbind(enr_country_list,country_num)
+```
+### In fact there are so many countries that it is difficult for us to show them all in one map. We have therefore eliminated the countries with a small number of learners so that we can easily focus on the more valuable objects of analysis.
+```{r}
+enr_country_num = filter(enr_country_num, country_num>10)
+```
+### If I used a simple bar chart, some of the countries would stand out too much and detract from the overall graph, so I have chosen to use a fan chart. To give a more visual representation of the number of learners in each country, I have also calculated the percentage of learners and labelled it on the graph.
+### The graph shows that most of the students are from the UK, India and Nigeria. And as non-native English learners make up a large group, I think schools should provide them with some language assistance.
+```{r echo=FALSE}
+enr_country_num = arrange(enr_country_num,desc(country_num))
+
+myLabel = as.vector(enr_country_num$country)   ## Conversion to vectors, otherwise the labels of the legend may not match the actual order
+myLabel = paste(myLabel, "(", round(enr_country_num$country_num / sum(enr_country_num$country_num) * 100, 2), "%) ", sep = "")   ## Use round() to retain two decimal places for the result
+
+ggplot(enr_country_num, aes(x = "", y=country_num, fill = country)) + geom_bar(stat = "identity") +
+          coord_polar(theta = "y") + 
+          labs(x = "", y = "", title = "") + theme(axis.ticks = element_blank()) + 
+          theme(legend.title = element_blank(), legend.position = "top") + 
+          scale_fill_discrete(breaks = enr_country_num$country, labels = myLabel)   ## Replace the original legend label with the current myLabel
+```
+
+
+# 2. Analyse the leaving survey response
+### In this step I tried to analyse what stage the learners were at when they left the study.As you can see from the graph most people managed to complete all the steps after several attempts, but there were some who gave up just as soon as they started trying, I think the mindset of this group needs to be adjusted, their patience is too low.
+### At the same time there is another group of people who, despite many attempts, are still at a more rudimentary stage and I think this group needs some technical guidance from the school.
+```{r echo=FALSE}
+#analysis the leaving
+ggplot(data=leaving_survey_responses,
+       aes(x=last_completed_step_number, y=last_completed_step)) +geom_point(stat = "sum", color="darkred")+
+       theme(
+          axis.title =  element_text(size=12,face = "bold"),
+          axis.text.x =   element_text(hjust = 1, # Adjusting the position of text in horizontal coordinates
+                                       size=15),  # Adjusting the font size of text in horizontal coordinates
+          plot.margin=unit(rep(3,4),'lines'))     # Set image margins  
+```
+
+
+# 3. Analyse the false rate
+### In this step I counted the error rate of each question and showed the ones with the highest error rate. I believe that the teaching methods for the knowledge points covered in these questions need to be improved.
+```{r echo=FALSE}
+#Find out what the problems are
+index = duplicated(question_response$quiz_question)
+question_response_quiz = question_response[!index,2]
+
+#compute the false rate for each question
+false_rate = data.frame()
+for(i in 1:29){
+  #generating single question's data frame
+  question_response_false = filter(question_response,quiz_question == as.character(question_response_quiz[i,1]))
+  #compute the num of true answers
+  true_answers = select(question_response_false,correct)
+  e = unlist(true_answers)
+  true_times = sum(e == "false")
+  #compute the rate
+  question_response_false = mutate(question_response_false,quiz_false_rates =     true_times/dim(question_response_false)[1])
+  #add the rate to the data frame
+  false_rate = rbind(false_rate,question_response_false) 
+}
+#false_rate
+#view(false_rate)
+#analysis the false rate of each quiz
+#quiz data de-duplication
+index = duplicated(false_rate$quiz_question)
+quiz_rate = false_rate[!index,]
+quiz_rate_plot = select(quiz_rate,quiz_question, quiz_false_rates)
+#quiz_rate_plot
+ggplot(data = quiz_rate_plot, aes(x = quiz_question, y = quiz_false_rates, fill= quiz_question)) + geom_bar(stat='identity') + 
+              theme(panel.grid.major =element_blank(),  #  remove the borders
+                    panel.grid.minor = element_blank(),
+                    panel.background = element_blank(),
+                    axis.title =  element_text(size=12,face = "bold"),
+                    axis.text.x = element_text(size = 0),  # Adjusting the font size of text in horizontal
+                    plot.margin=unit(rep(3,4),'lines'))     # Set image margins 
+```
+
+
+# 3. Analyse the activity step
+### In this section we look at the unfinished rate of the activity. I have counted the failure rates for each step of the campaign and listed the six steps with the highest failure rates. I think the design of these six steps may need to be improved.
+```{r echo=FALSE}
+#analysis the activity step
+#Find out what the activities are
+index = duplicated(step_activity$step)
+step_activity_step = step_activity[!index,2]    
+#step_activity_step
+step_activity2 = select(step_activity, step, last_completed_at)
+#compute the complete rate
+uncomplete_rate = c()
+for(i in 1:58){
+  #generating single step's data frame
+  step_activity_step_single = filter(step_activity2,step == as.character(step_activity_step[i,1]))
+  #compute the times that did not finish
+  times = select(step_activity_step_single,last_completed_at)
+  e = unlist(times)
+  uncomplete_times = sum(e == "")
+  #Add the uncompleted rate for this step to the list
+  uncomplete_rate = c(uncomplete_rate,uncomplete_times/dim(step_activity_step_single)[1])
+}
+#Transformation into a data framework
+uncomplete_rate = as.data.frame(uncomplete_rate)
+#combine
+step_activity_step = cbind(step_activity_step,uncomplete_rate)
+#step_activity_step
+#Removal of lower values
+step_activity_step = filter(step_activity_step, uncomplete_rate > 0.15)
+ggplot(data = step_activity_step, aes(x = as.factor(step), y = uncomplete_rate, fill= step)) + geom_bar(stat='identity') + 
+  theme(panel.grid.major =element_blank(),  
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank(),
+        axis.title =  element_text(size=12,face = "bold"),
+        axis.text.x = element_text(size = 12),  
+        plot.margin=unit(rep(3,4),'lines'))     
+
+```
